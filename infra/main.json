@@ -1,0 +1,780 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.1124.51302",
+      "templateHash": "4395198937488628122"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "japaneast"
+    },
+    "project": {
+      "type": "string",
+      "defaultValue": "iot"
+    },
+    "env": {
+      "type": "string",
+      "defaultValue": "demo",
+      "allowedValues": [
+        "demo",
+        "poc",
+        "dev",
+        "test",
+        "prod"
+      ]
+    },
+    "deployment_id": {
+      "type": "string",
+      "defaultValue": "001"
+    },
+    "userId": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "uniqueName": "[format('{0}-pi{1}', parameters('project'), parameters('deployment_id'))]",
+    "rg_name": "[format('{0}-rg-iot-lambda-{1}', variables('uniqueName'), parameters('env'))]",
+    "tags": {
+      "Environment": "[parameters('env')]",
+      "Project": "[parameters('project')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[variables('rg_name')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "lambdaServiceDeployment",
+      "resourceGroup": "[variables('rg_name')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "userId": {
+            "value": "[parameters('userId')]"
+          },
+          "uniqueName": {
+            "value": "[variables('uniqueName')]"
+          },
+          "env": {
+            "value": "[parameters('env')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.1124.51302",
+              "templateHash": "508066238941267267"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "japaneast"
+            },
+            "env": {
+              "type": "string",
+              "defaultValue": "demo"
+            },
+            "uniqueName": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object"
+            },
+            "userId": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "iothubName": "[format('{0}-iot-{1}', parameters('uniqueName'), parameters('env'))]",
+            "datalakeName": "[replace(replace(toLower(format('{0}-dls-cold-{1}', parameters('uniqueName'), parameters('env'))), '-', ''), '_', '')]",
+            "FileSytemNames": [
+              "raw",
+              "enrich",
+              "curated",
+              "workspace",
+              "landing"
+            ],
+            "synapseName": "[format('{0}-syn-{1}', parameters('uniqueName'), parameters('env'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "iotHubDeployment",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  },
+                  "iotName": {
+                    "value": "[variables('iothubName')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "15027064870098880281"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "iotName": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object"
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Devices/IotHubs",
+                      "apiVersion": "2021-07-02",
+                      "name": "[parameters('iotName')]",
+                      "location": "[parameters('location')]",
+                      "sku": {
+                        "name": "B1",
+                        "capacity": 10
+                      },
+                      "identity": {
+                        "type": "SystemAssigned"
+                      },
+                      "tags": "[parameters('tags')]"
+                    }
+                  ],
+                  "outputs": {
+                    "iotId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Devices/IotHubs', parameters('iotName'))]"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "storageDeployment",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  },
+                  "storageName": {
+                    "value": "[variables('datalakeName')]"
+                  },
+                  "fileSystemNames": {
+                    "value": "[variables('FileSytemNames')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "6229464395062274008"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object"
+                    },
+                    "storageName": {
+                      "type": "string"
+                    },
+                    "fileSystemNames": {
+                      "type": "array"
+                    }
+                  },
+                  "variables": {
+                    "storageNameCleaned": "[replace(parameters('storageName'), '-', '')]",
+                    "resourceAccessRules": [
+                      {
+                        "tenantId": "[subscription().tenantId]",
+                        "resourceId": "[format('/subscriptions/{0}/resourceGroups/*/providers/Microsoft.Synapse/workspaces/*', subscription().subscriptionId)]"
+                      }
+                    ]
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Storage/storageAccounts",
+                      "apiVersion": "2021-02-01",
+                      "name": "[variables('storageNameCleaned')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "identity": {
+                        "type": "SystemAssigned"
+                      },
+                      "sku": {
+                        "name": "Standard_LRS"
+                      },
+                      "kind": "StorageV2",
+                      "properties": {
+                        "accessTier": "Hot",
+                        "allowBlobPublicAccess": false,
+                        "allowSharedKeyAccess": false,
+                        "encryption": {
+                          "keySource": "Microsoft.Storage",
+                          "requireInfrastructureEncryption": false,
+                          "services": {
+                            "blob": {
+                              "enabled": true,
+                              "keyType": "Account"
+                            },
+                            "file": {
+                              "enabled": true,
+                              "keyType": "Account"
+                            },
+                            "queue": {
+                              "enabled": true,
+                              "keyType": "Service"
+                            },
+                            "table": {
+                              "enabled": true,
+                              "keyType": "Service"
+                            }
+                          }
+                        },
+                        "isHnsEnabled": true,
+                        "isNfsV3Enabled": false,
+                        "largeFileSharesState": "Disabled",
+                        "minimumTlsVersion": "TLS1_2",
+                        "networkAcls": {
+                          "bypass": "Metrics",
+                          "defaultAction": "Allow",
+                          "ipRules": [],
+                          "virtualNetworkRules": [],
+                          "resourceAccessRules": "[variables('resourceAccessRules')]"
+                        },
+                        "supportsHttpsTrafficOnly": true
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+                      "apiVersion": "2021-02-01",
+                      "name": "[format('{0}/{1}', variables('storageNameCleaned'), 'default')]",
+                      "properties": {
+                        "policy": {
+                          "rules": [
+                            {
+                              "enabled": true,
+                              "name": "default",
+                              "type": "Lifecycle",
+                              "definition": {
+                                "actions": {
+                                  "baseBlob": {
+                                    "tierToCool": {
+                                      "daysAfterModificationGreaterThan": 90
+                                    }
+                                  },
+                                  "snapshot": {
+                                    "tierToCool": {
+                                      "daysAfterCreationGreaterThan": 90
+                                    }
+                                  },
+                                  "version": {
+                                    "tierToCool": {
+                                      "daysAfterCreationGreaterThan": 90
+                                    }
+                                  }
+                                },
+                                "filters": {
+                                  "blobTypes": [
+                                    "blockBlob"
+                                  ],
+                                  "prefixMatch": []
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameCleaned'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/blobServices",
+                      "apiVersion": "2021-02-01",
+                      "name": "[format('{0}/{1}', variables('storageNameCleaned'), 'default')]",
+                      "properties": {
+                        "containerDeleteRetentionPolicy": {
+                          "enabled": true,
+                          "days": 7
+                        },
+                        "cors": {
+                          "corsRules": []
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameCleaned'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "storageFileSystems",
+                        "count": "[length(parameters('fileSystemNames'))]"
+                      },
+                      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+                      "apiVersion": "2021-02-01",
+                      "name": "[format('{0}/{1}/{2}', variables('storageNameCleaned'), 'default', parameters('fileSystemNames')[copyIndex()])]",
+                      "properties": {
+                        "publicAccess": "None",
+                        "metadata": {}
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameCleaned'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageNameCleaned'), 'default')]"
+                      ]
+                    }
+                  ],
+                  "outputs": {
+                    "storageId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameCleaned'))]"
+                    },
+                    "storageFileSystemIds": {
+                      "type": "array",
+                      "copy": {
+                        "count": "[length(parameters('fileSystemNames'))]",
+                        "input": {
+                          "storageFileSystemId": "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('storageNameCleaned'), 'default', parameters('fileSystemNames')[copyIndex()])]"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "synapseDeployment",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  },
+                  "synapseDefaultStorageAccountFileSystemId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageDeployment'), '2020-10-01').outputs.storageFileSystemIds.value[3].storageFileSystemId]"
+                  },
+                  "administratorPassword": {
+                    "value": ""
+                  },
+                  "synapseName": {
+                    "value": "[variables('synapseName')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "9387496940990043726"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object"
+                    },
+                    "synapseName": {
+                      "type": "string"
+                    },
+                    "administratorUsername": {
+                      "type": "string",
+                      "defaultValue": "SqlServerMainUser"
+                    },
+                    "administratorPassword": {
+                      "type": "secureString"
+                    },
+                    "synapseDefaultStorageAccountFileSystemId": {
+                      "type": "string"
+                    },
+                    "AllowAll": {
+                      "type": "string",
+                      "defaultValue": "true",
+                      "allowedValues": [
+                        "true",
+                        "false"
+                      ]
+                    }
+                  },
+                  "variables": {
+                    "synapseDefaultStorageAccountFileSystemName": "[if(greaterOrEquals(length(split(parameters('synapseDefaultStorageAccountFileSystemId'), '/')), 13), last(split(parameters('synapseDefaultStorageAccountFileSystemId'), '/')), 'incorrectSegmentLength')]",
+                    "synapseDefaultStorageAccountName": "[if(greaterOrEquals(length(split(parameters('synapseDefaultStorageAccountFileSystemId'), '/')), 13), split(parameters('synapseDefaultStorageAccountFileSystemId'), '/')[8], 'incorrectSegmentLength')]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Synapse/workspaces",
+                      "apiVersion": "2021-03-01",
+                      "name": "[parameters('synapseName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "identity": {
+                        "type": "SystemAssigned"
+                      },
+                      "properties": {
+                        "defaultDataLakeStorage": {
+                          "accountUrl": "[format('https://{0}.dfs.{1}', variables('synapseDefaultStorageAccountName'), environment().suffixes.storage)]",
+                          "filesystem": "[variables('synapseDefaultStorageAccountFileSystemName')]"
+                        },
+                        "publicNetworkAccess": "Enabled",
+                        "sqlAdministratorLogin": "[parameters('administratorUsername')]",
+                        "sqlAdministratorLoginPassword": "[parameters('administratorPassword')]"
+                      }
+                    },
+                    {
+                      "condition": "[equals(parameters('AllowAll'), 'true')]",
+                      "type": "Microsoft.Synapse/workspaces/firewallRules",
+                      "apiVersion": "2021-06-01",
+                      "name": "[format('{0}/{1}', parameters('synapseName'), 'allowAll')]",
+                      "properties": {
+                        "startIpAddress": "0.0.0.0",
+                        "endIpAddress": "255.255.255.255"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseName'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Synapse/workspaces/managedIdentitySqlControlSettings",
+                      "apiVersion": "2021-03-01",
+                      "name": "[format('{0}/{1}', parameters('synapseName'), 'default')]",
+                      "properties": {
+                        "grantSqlControlToManagedIdentity": {
+                          "desiredState": "Enabled"
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseName'))]"
+                      ]
+                    }
+                  ],
+                  "outputs": {
+                    "synapseId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseName'))]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'storageDeployment')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "synapseRBACStorage",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "iotId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'iotHubDeployment'), '2020-10-01').outputs.iotId.value]"
+                  },
+                  "storageAccountFileSystemId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageDeployment'), '2020-10-01').outputs.storageFileSystemIds.value[3].storageFileSystemId]"
+                  },
+                  "synapseId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'synapseDeployment'), '2020-10-01').outputs.synapseId.value]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "10727783532508293563"
+                    }
+                  },
+                  "parameters": {
+                    "storageAccountFileSystemId": {
+                      "type": "string"
+                    },
+                    "synapseId": {
+                      "type": "string"
+                    },
+                    "iotId": {
+                      "type": "string"
+                    }
+                  },
+                  "variables": {
+                    "storageAccountName": "[if(greaterOrEquals(length(split(parameters('storageAccountFileSystemId'), '/')), 13), split(parameters('storageAccountFileSystemId'), '/')[8], 'incorrectSegmentLength')]",
+                    "synapseName": "[last(split(parameters('synapseId'), '/'))]",
+                    "iotName": "[last(split(parameters('iotId'), '/'))]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2020-04-01-preview",
+                      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+                      "name": "[guid(uniqueString(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.Synapse/workspaces', variables('synapseName')), 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'))]",
+                      "properties": {
+                        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                        "principalId": "[reference(resourceId('Microsoft.Synapse/workspaces', variables('synapseName')), '2021-03-01', 'full').identity.principalId]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2020-04-01-preview",
+                      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+                      "name": "[guid(uniqueString(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), resourceId('Microsoft.Devices/IotHubs', variables('iotName')), 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'))]",
+                      "properties": {
+                        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                        "principalId": "[reference(resourceId('Microsoft.Devices/IotHubs', variables('iotName')), '2021-07-02', 'full').identity.principalId]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'iotHubDeployment')]",
+                "[resourceId('Microsoft.Resources/deployments', 'storageDeployment')]",
+                "[resourceId('Microsoft.Resources/deployments', 'synapseDeployment')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "userRBAC",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "storageAccountFileSystemId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageDeployment'), '2020-10-01').outputs.storageFileSystemIds.value[3].storageFileSystemId]"
+                  },
+                  "userId": {
+                    "value": "[parameters('userId')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "4626979452331461633"
+                    }
+                  },
+                  "parameters": {
+                    "storageAccountFileSystemId": {
+                      "type": "string"
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "variables": {
+                    "storageAccountName": "[if(greaterOrEquals(length(split(parameters('storageAccountFileSystemId'), '/')), 13), split(parameters('storageAccountFileSystemId'), '/')[8], 'incorrectSegmentLength')]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2020-04-01-preview",
+                      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageAccountName'))]",
+                      "name": "[guid(uniqueString(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), parameters('userId'), 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'))]",
+                      "properties": {
+                        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                        "principalId": "[parameters('userId')]",
+                        "principalType": "User"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'storageDeployment')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2020-10-01",
+              "name": "IotHubRouting",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "iotName": {
+                    "value": "[variables('iothubName')]"
+                  },
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "storageAccountFileSystemId": {
+                    "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageDeployment'), '2020-10-01').outputs.storageFileSystemIds.value[4].storageFileSystemId]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.4.1124.51302",
+                      "templateHash": "5080822678674186382"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string"
+                    },
+                    "iotName": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "object"
+                    },
+                    "storageAccountFileSystemId": {
+                      "type": "string"
+                    }
+                  },
+                  "variables": {
+                    "storageAccountFileSystemName": "[if(greaterOrEquals(length(split(parameters('storageAccountFileSystemId'), '/')), 13), last(split(parameters('storageAccountFileSystemId'), '/')), 'incorrectSegmentLength')]",
+                    "storageAccountName": "[if(greaterOrEquals(length(split(parameters('storageAccountFileSystemId'), '/')), 13), split(parameters('storageAccountFileSystemId'), '/')[8], 'incorrectSegmentLength')]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Devices/IotHubs",
+                      "apiVersion": "2021-07-02",
+                      "name": "[parameters('iotName')]",
+                      "location": "[parameters('location')]",
+                      "sku": {
+                        "name": "B1",
+                        "capacity": 10
+                      },
+                      "identity": {
+                        "type": "SystemAssigned"
+                      },
+                      "tags": "[parameters('tags')]",
+                      "properties": {
+                        "routing": {
+                          "endpoints": {
+                            "storageContainers": [
+                              {
+                                "name": "datalakeLanding",
+                                "containerName": "[variables('storageAccountFileSystemName')]",
+                                "encoding": "JSON",
+                                "authenticationType": "identityBased",
+                                "fileNameFormat": "{iothub}/{partition}/{YYYY}/{MM}/{DD}/{HH}/{mm}.JSON",
+                                "batchFrequencyInSeconds": 100,
+                                "maxChunkSizeInBytes": 104857600,
+                                "endpointUri": "[format('https://{0}.blob.{1}/', variables('storageAccountName'), environment().suffixes.storage)]",
+                                "subscriptionId": "[subscription().subscriptionId]",
+                                "resourceGroup": "[resourceGroup().name]"
+                              }
+                            ]
+                          },
+                          "routes": [
+                            {
+                              "name": "datalake",
+                              "endpointNames": [
+                                "datalakeLanding"
+                              ],
+                              "isEnabled": true,
+                              "source": "DeviceMessages"
+                            },
+                            {
+                              "name": "events",
+                              "endpointNames": [
+                                "events"
+                              ],
+                              "isEnabled": true,
+                              "source": "DeviceMessages"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deployments', 'synapseRBACStorage')]",
+                "[resourceId('Microsoft.Resources/deployments', 'storageDeployment')]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rg_name'))]"
+      ]
+    }
+  ]
+}
